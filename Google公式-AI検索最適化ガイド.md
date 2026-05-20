@@ -108,13 +108,43 @@ Google公式が明確に否定している"AIOハック"の一覧。
 ### 4-2. AI機能への表示を制御するメタタグ
 | 指令 | 用途 |
 |---|---|
-| `nosnippet` | スニペット表示を完全に抑制（AI Overviews等にも引用されにくくなる） |
-| `data-nosnippet` | ページ内の特定箇所だけスニペット利用を抑制 |
-| `max-snippet:[n]` | スニペット最大文字数を制限 |
-| `noindex` | インデックス自体を拒否 |
-| `robots.txt` の Googlebot disallow | クロール自体を拒否 |
+| `nosnippet` | **テキストスニペットおよびビデオプレビューを非表示**。公式表現："will also prevent the content from being used as a direct input for AI Overviews and AI Mode" → **AI Overviews / AI Mode の入力からも除外される** |
+| `data-nosnippet` | `<span>` `<div>` `<section>` に付与し、ページ内の特定箇所だけスニペット／AI機能の入力から除外（JS動的付与は非推奨：不確実性） |
+| `max-snippet:[n]` | スニペット最大文字数を制限。低い値ほど Featured Snippets / AI Overviews の対象になりにくい |
+| `max-image-preview:[none\|standard\|large]` | 画像プレビューサイズ制御 |
+| `max-video-preview:[n]` | 動画プレビュー最大秒数を制御 |
+| `noindex` | インデックス自体を拒否（=AI機能にも出ない） |
+| `indexifembedded` | `noindex` 併用時のみ意味あり。iframe等で他ページに埋め込まれた場合のインデックスを許可 |
+| `notranslate` | 翻訳結果の非表示 |
+| `robots.txt` の `User-agent: Googlebot` Disallow | クロール自体を拒否（=メタタグも読まれない） |
 
-### 4-3. パフォーマンス計測
+**`X-Robots-Tag` HTTPヘッダ**でも同じディレクティブが指定可能。非HTMLファイル（PDF・画像）の制御や、サーバー側で一括制御する場合に有効。
+
+> ⚠ **robots.txt で Disallow したページのメタタグは読まれない**。「AIには出したくないが検索には出したい」場合は robots.txt ではなく `nosnippet` を使う。
+
+### 4-3. Googleクローラの種類と AI関連の制御
+
+| クローラ | User-agent トークン | 用途 | robots.txt 制御 |
+|---|---|---|---|
+| **Googlebot** | `Googlebot` | Google Search全般（Discover/Image/Video/News含む）。**AI Overviews / AI Mode もこれが取得した内容を使う** | `User-agent: Googlebot` |
+| **Google-Extended** | `Google-Extended` | **Gemini Apps / Vertex AI API for Gemini の学習用**。検索のランキング信号にはならない | `User-agent: Google-Extended` |
+| **GoogleOther** | `GoogleOther` | 内部R&D等の汎用クロール。特定製品に紐づかない | `User-agent: GoogleOther` |
+
+#### 重要な区別
+- **AI Overviews / AI Mode を出したくない** → `Googlebot` を Disallow するか `nosnippet` を使う（ただし Googlebot Disallow は検索結果からも消える）
+- **Gemini系の学習からのみ除外したい** → `Google-Extended` のみ Disallow（検索には影響しない）
+- **両方拒否したい** → 両方 Disallow
+
+```txt
+# 例：検索には出すが、Gemini系の学習データには使わせない
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: Googlebot
+Allow: /
+```
+
+### 4-4. パフォーマンス計測
 - Search Console「パフォーマンスレポート」の **Web検索タイプ** でAI機能由来のクリック・インプレッションを確認
 
 ---
@@ -235,6 +265,92 @@ AI最適化を装って踏みがちな違反パターンを抜粋。
 
 ---
 
+## 9-A. Core Web Vitals（具体閾値）
+
+ページ体験の中核指標。AI機能の表示資格に直接の閾値要件はないが、**コアランキング要因に含まれる**ためコンテンツ競合時に効く。
+
+| 指標 | 何を測るか | 推奨閾値 |
+|---|---|---|
+| **LCP** (Largest Contentful Paint) | 最大要素の描画完了までの時間（読み込み速度） | **< 2.5 秒** |
+| **INP** (Interaction to Next Paint) | クリック/タップ後の応答までの時間（応答性） | **< 200 ms** |
+| **CLS** (Cumulative Layout Shift) | 視覚要素のずれ量（視覚的安定性） | **< 0.1** |
+
+- 計測ツール：Search Console「Core Web Vitals」レポート、PageSpeed Insights、Chrome UX Report（CrUX）
+- INP は 2024 年に FID から置き換わった現行指標
+- その他のページ体験要素：**HTTPS必須**、モバイル対応、侵入型インタースティシャル回避、広告が主コンテンツを邪魔しないこと
+
+---
+
+## 9-B. 構造化データの実装ガイドライン
+
+AI機能の必須要件ではないが、リッチリザルト適格・商品/レビュー/イベント等の表示で引き続き重要。
+
+### フォーマット
+| 形式 | Google推奨度 | 特徴 |
+|---|---|---|
+| **JSON-LD** | ★★★（推奨） | `<script type="application/ld+json">` 内に埋め込み、保守容易 |
+| Microdata | △ | HTML属性で表現 |
+| RDFa | △ | HTML5拡張 |
+
+### 実装の必須条件
+- **schema.org の語彙に準拠**しつつ、Google Search Central の各機能ドキュメントを優先
+- **必須プロパティをすべて含める**（欠落=リッチリザルト非対象）
+- **推奨プロパティは"質"重視**（完全で正確に）
+- **可視テキストとの一致**：ページに表示されていないデータをマークアップに入れない（ポリシー違反）
+
+### 検証
+- **Rich Results Test**（開発時）
+- **Rich result status reports**（デプロイ後の継続監視）
+- **URL Inspection Tool**（個別ページのマークアップ認識確認）
+
+---
+
+## 9-C. Featured Snippets と AI Overviews の関係
+
+- Featured Snippets（強調スニペット）= 通常検索結果の上に「説明文→タイトル」の逆順で表示される特別な結果
+- **Featured Snippets の表示を狙ってリクエストすることはできない**（Googleが自動判定）
+- AI Overviews との関係：両者は別機能だが、`nosnippet` / `max-snippet` でまとめて制御可能
+- 完全に出したくない → `nosnippet`
+- 部分的に抑制したい → `max-snippet:[小さい数字]`（保証はされない）
+
+---
+
+## 9-D. JavaScript SEO の落とし穴
+
+GoogleはJSをレンダリングするが、以下は典型的な失敗パターン：
+
+- **フラグメントルーティング**（`#/products` 形式）→ ❌ Googlebot がリンクとして認識しない。**History API** を使い `/products` 形式に
+- **クライアントサイド 404**：実際には HTTP 200 を返してJSで「Not Found」を表示 → ソフト404扱い。JSで `<meta name="robots" content="noindex">` を付与するか、サーバ側で正しい 404 を返す
+- **canonical をJSで設定**：非推奨。元のHTMLと同じ値にすること
+- **キャッシュ問題**：Googlebot は積極的にキャッシュする。ファイル名にフィンガープリント（`main.2bb85551.js` 形式）を入れる
+- **Web Components**：レンダリング後の HTML に見えるコンテンツのみ評価対象。Shadow DOM と Light DOM の両方が表示されるよう slot を活用
+- **SSR / Hybrid Rendering を優先**：UXもクローラ互換性も向上する
+
+---
+
+## 9-E. eコマース固有の対応
+
+### 商品データのGoogleへの伝達経路
+1. **構造化データ**（`Product` schema：価格・在庫・レビュー）
+2. **Merchant Center フィード**（商品カタログを直接送信）
+3. **Google Business Profile**（実店舗情報）
+
+### EC SEO の8重点領域（公式）
+1. コンテンツ可視性（Google各サーフェスでの商品情報の出方）
+2. データ共有方法の選択
+3. 構造化データ実装
+4. サイト立ち上げタイミング（新規ドメインの登録）
+5. レビュー品質（信頼できる商品評価）
+6. URL設計（クローラブルで論理的）
+7. ナビゲーション階層（重要度を伝える）
+8. UXパターン（ページネーション・遅延読み込みの影響管理）
+
+### AI生成コンテンツのEC特別ルール
+- AI生成画像：IPTC `DigitalSourceType` メタデータ + `TrainedAlgorithmicMedia` 指定
+- AI生成テキスト（商品説明など）：明示的にラベル
+
+---
+
 ## 10. サイト構築時のチェックリスト（実務適用版）
 
 ### A. コンテンツ
@@ -249,12 +365,17 @@ AI最適化を装って踏みがちな違反パターンを抜粋。
 ### B. テクニカル
 - [ ] HTTP 200 で返るか
 - [ ] Googlebot が robots.txt でブロックされていないか
-- [ ] noindex / nosnippet が誤って付いていないか
+- [ ] noindex / nosnippet が誤って付いていないか（AI機能から消したい場合のみ意図的に）
 - [ ] レンダリングされた最終HTMLにテキストコンテンツが含まれるか（JSフレームワーク注意）
-- [ ] Core Web Vitals が良好か
-- [ ] モバイル対応済みか
+- [ ] Core Web Vitals が良好か（LCP<2.5s / INP<200ms / CLS<0.1）
+- [ ] HTTPS で配信されているか
+- [ ] モバイル対応済みか（モバイルファーストインデックス）
+- [ ] 侵入型インタースティシャルがないか
+- [ ] フラグメントルーティング（`#/`）を使っていないか
 - [ ] 重複コンテンツに canonical を設定しているか
+- [ ] 301リダイレクトが適切に張られているか
 - [ ] Search Console にサイトマップを送信済みか
+- [ ] Google-Extended の許可/拒否方針を決めているか（Gemini学習データに使わせるか）
 
 ### C. メディア
 - [ ] 画像に説明的なalt属性が付いているか
@@ -335,3 +456,12 @@ AI最適化を装って踏みがちな違反パターンを抜粋。
 
 ## 改訂履歴
 - 2026-05-20 初版作成（出典：Google Search Central 公式ドキュメント / 取得日同日）
+- 2026-05-20 公式ナレッジカバレッジ精査により以下を追記：
+  - 4-2: `nosnippet` が AI Overviews / AI Mode の直接入力を明示的にブロックする公式仕様、`max-image-preview` / `max-video-preview` / `indexifembedded` / `notranslate`、`X-Robots-Tag` ヘッダ、robots.txt と メタタグの読み順注意
+  - 4-3: Googleクローラ一覧（Googlebot / Google-Extended / GoogleOther）と AI機能/Gemini学習の制御区別、robots.txt 設定例
+  - 9-A: Core Web Vitals の具体閾値（LCP/INP/CLS）、HTTPS必須、インタースティシャル回避
+  - 9-B: 構造化データの形式比較・必須/推奨プロパティ・検証ツール（Rich Results Test 等）
+  - 9-C: Featured Snippets と AI Overviews の制御関係
+  - 9-D: JavaScript SEO の典型的落とし穴（フラグメントルーティング・ソフト404・キャッシュ等）
+  - 9-E: ECフィード経路と EC SEO 8重点領域
+  - チェックリストB: Core Web Vitals 閾値・HTTPS・モバイルファースト・フラグメントルーティング・Google-Extended方針を追加
