@@ -1,0 +1,14 @@
+name: AI検索最適化ナレッジ集
+client: 自社
+summary: Google公式のAI検索最適化ガイドを軸に、AI検索・SEO関連の一次情報を日本語で整理した社内ナレッジ集。サイト構築やコンテンツ制作、施策判断の参照軸として活用。
+status: 進行中
+next_actions:
+  - 公式ドキュメントの差分確認（四半期に一度）
+  - 大きな仕様変更があれば該当セクションを追記
+tags:
+  - SEO
+  - AIO
+  - ナレッジ
+  - コンテンツ制作
+updated: 2026-08-04
+generated_by: gemini-2.5-flash (要確認)
