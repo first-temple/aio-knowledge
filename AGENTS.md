@@ -143,3 +143,66 @@ UI・HTML・CSSを書くときは以下を守ってください。
 - ポータルで現状を確認: https://ft-portal.pages.dev
 - 詳しいルール: `~/dev/ft-portal/README.md`、`~/.claude/CLAUDE.md`
 - 共通のハマりどころ: `~/.claude/shared-knowledge/errors-and-fixes.md`
+
+---
+
+## 全社共通ルール
+
+このリポジトリで作業したら、**必ず以下を守ってください**。
+（詳細版はプライベートリポのため開けないことがあります。要点はここに書いてあります）
+
+### 1. 作業を終えたら `.project.yml` を更新してpushする
+
+リポジトリ直下の `.project.yml` が社内ポータルの正本です。毎朝6時にクロールされます。
+**更新しないとポータル上で「停滞」と表示され、朝の通知にアラートが出ます。**
+
+```yaml
+name: プロジェクトの表示名（日本語）
+client: クライアント名（社内なら「自社」、個人利用なら「自分」）
+summary: 何をするものかを1〜2文で（60〜120文字）
+status: 進行中     # 設計済み | 進行中 | 確認中 | 完了 | 停止 の5値のみ
+next_actions:      # 次にやること。最大3件。やったことは書かない
+  - 次のタスク
+urls:
+  prod: https://xxx.pages.dev
+updated: YYYY-MM-DD
+```
+
+status は5値のみ。外部の返答待ちなら `確認中`、止めているなら `停止` に正しく変えてください。
+
+### 2. タスクは GitHub Issues が正本（Issueから始めて、Issueで終える）
+
+ポータルの「タスク」タブと毎朝の通知は、全リポの open Issue を横断集計して作られます。
+**Issue にしていない作業は進行管理から見えなくなります。**
+
+- **まとまった作業は Issue を起点にする**（無ければ `gh issue create` で作ってから着手）
+- **終わったら検証内容を1〜3行コメントしてクローズする**。途中経過も Issue に書き戻す
+- **作業中に見つけた課題・積み残しは、その場で新しい Issue に起票する**
+- **ユーザーの判断・返信がないと進めない時は `要判断` ラベルを付けて止まる**
+  （`gh label create 要判断 --color D93F0B 2>/dev/null; gh issue edit <番号> --add-label 要判断`。
+  判断してほしい選択肢と推奨案を本文に書く。丸投げしない）
+- **期限があるものは `due:YYYY-MM-DD` ラベルを付ける**（無ければ `gh label create` で作る）
+
+`要判断` と期限は、翌朝の Chatwork 通知の先頭とポータルのタスクタブに自動で上がります。
+
+### 3. 作業場所は `~/dev/` 配下（`~/Desktop` は使わない）
+
+`~/Desktop` は iCloud 同期対象で **`.git` が壊れます**（過去に複数回発生）。
+
+### 4. その他の必須ルール
+
+- コミットメッセージは日本語。`main` への直接pushは禁止（PR経由）。ただし `.project.yml` のみの変更は直pushで可
+- クレデンシャル（`.env`・APIキー）は絶対にコミットしない
+- デプロイ先は **Cloudflare Pages** で統一（Vercel/Netlify は使わない）
+- Pages Functions（`_middleware.js`）は**アセットディレクトリの外**に置く。内側だと認証が全く効かない
+- **ダークモード対応を書かない**（`prefers-color-scheme: dark` 等）。配色はライト固定
+- 料金・API仕様は記憶で答えず、公式ドキュメントで確認してURLとセットで示す
+- launchd から `~/Desktop` 配下を直接叩かない（TCCで `exit 78` になり、ログも出ずに死ぬ）
+
+### 5. このファイルについて
+
+**このファイルのプロジェクト固有の記述（上部）は、あなたが自由に更新してください。**
+この「全社共通ルール」セクションだけは、ポータル側から自動で同期されます。
+
+- 共通ルール全文: https://github.com/ksk0109/ft-portal/blob/main/docs/AGENTS.md （private）
+- ポータル: https://ft-portal.pages.dev （admin / firsttemple）
