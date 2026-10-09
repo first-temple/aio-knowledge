@@ -206,3 +206,27 @@ status は5値のみ。外部の返答待ちなら `確認中`、止めている
 
 - 共通ルール全文: https://github.com/ksk0109/ft-portal/blob/main/docs/AGENTS.md （private）
 - ポータル: https://ft-portal.pages.dev （admin / firsttemple）
+
+<!-- ft-member-rules:start（このブロックは ft-codex-plugins/templates/member-rules.md から自動反映。直接編集しない） -->
+## 👥 FTメンバーの作業ルール（全プロジェクト共通）
+
+このフォルダで作業するときは、AI（Codex / Claude）も人も次を必ず守る。
+
+### 絶対に守ること
+1. **main（または master）に直接書き込まない・送らない。** 必ず「作業用ブランチ → 変更を記録 → PR（提出）」の順で進める（スキル `naosu`）
+   - ブランチ名: `fix/<内容>-<YYYYMMDD>`（修正）／`feat/<内容>-<YYYYMMDD>`（追加）
+2. **PR は自分でマージしない。** 中山さんが確認して反映する。PR の URL を Chatwork で中山さんに伝える
+3. 作業を始める前に最新の状態に合わせる（`git fetch` → main を最新化してからブランチを切る）
+4. **`--force` 付きの送信・履歴の書き換え・ブランチの削除をしない。** 他の人のブランチに送らない
+5. **パスワード・APIキー・`.env`・認証用JSONを git に入れない。** チャットに貼られたキーもファイルに書かない
+6. PR は「1つの目的につき1つ」。頼まれていないファイルの整形・改名・削除を混ぜない
+
+### 中山さんに確認してから行うこと
+- 公開・デプロイ（本番サイトへの反映）
+- クライアントの本番環境・広告・配信設定の変更
+- 定期実行ジョブ（launchd・GitHub Actions・cron）や設定ファイル（`config/`・`wrangler.toml`・`.github/`）の変更
+- ファイル・フォルダの削除や改名、外部への送信（メール・Chatwork投稿・配信）
+
+### 困ったとき
+Chatwork「【社内】AIフィードバック専用」に、やったことと出たメッセージをそのまま貼る。
+<!-- ft-member-rules:end -->
